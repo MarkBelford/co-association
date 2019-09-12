@@ -38,6 +38,12 @@ Generate the weighted co-association matrix and ensemble topics, based on a prov
 Tool for evaluating the coherence of topic models, using measures based on word embeddings.
 
     python evaluate-embedding.py -b -t 10 -m data/model-w2v.bin -o results-embedding-k03.csv results/nmf_k03/ranks*.pkl
+
+#### Step 6: Rank Topics and Visualize Topic Structure
+
+Run the included jupyter notebook to produce a ranking of topics and visualize the topical structure.
+
+This notebook requires a word embedding file in binary format and the results generated from Step 2 as it generates the weighted co-association matrix again.
     
 
 

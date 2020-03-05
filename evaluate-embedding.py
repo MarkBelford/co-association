@@ -3,7 +3,7 @@
 Tool for evaluating the coherence of topic models stred in one or more PKL files, using measure based on word embeddings.
 
 Sample usage:
-python evaluate-embedding.py -b -t 10 -m /Users/Mark/Desktop/embeddings-w2v/cnndailymail-w2v-cbow-d100.bin -o results/bbc-coherence.csv data/bbc/nmf_k05/*rank*
+python evaluate-embedding.py -b -t 10 -m wikipedia2016-w2v-cbow-d100.bin -o results/bbc-coherence.csv data/bbc/nmf_k05/*rank*
 
 """
 import os, os.path, sys

@@ -1,6 +1,6 @@
-import math, string
 import numpy as np
-from prettytable import PrettyTable
+import pandas as pd
+from tabulate import tabulate
 import unsupervised.hungarian
 
 # --------------------------------------------------------------
@@ -90,6 +90,64 @@ class RankingSetAgreement:
 		return (score, results)
 
 # --------------------------------------------------------------
+# Topic Display
+# --------------------------------------------------------------
+
+class DescriptorTable:
+
+	def __init__( self, term_rankings, top = 10, labels = None ):
+		self.term_rankings = term_rankings
+		self.top = top
+		self.labels = labels
+		self.df = self._populate_df()
+
+	def _populate_df( self ):
+		k = len(self.term_rankings)
+		if self.labels is None:
+			columns = []
+			for i in range( k ):
+				columns.append("C%02d" % (i+1) )
+		else:
+			columns = list(self.labels)
+		rows = []
+		for i in range( self.top ):
+			row = { "Rank" : i+1 }
+			for j in range( k ):
+				col_name = columns[j]
+				row[col_name] = self.term_rankings[j][i]
+			rows.append( row )
+		columns.insert( 0, "Rank" )
+		return pd.DataFrame( rows, columns=columns ).set_index("Rank")
+
+	def format( self ):
+		"""
+		Format a list of multiple term rankings, one ranking per column.
+		"""
+		return tabulate(self.df, headers='keys', tablefmt='psql')
+
+	def format_long( self ):
+		"""
+		Format a list of multiple term rankings, one ranking per row.
+		"""
+		# create the long tablee
+		rows = []
+		long_columns = [ "Topic", "Top %d Terms" % self.top ]
+		for col in self.df.columns:
+			terms = list(self.df[col])
+			sterms = ", ".join( terms )
+			row = { "Topic" : col, long_columns[-1] : sterms }
+			rows.append( row )
+		long_df = pd.DataFrame( rows, columns=long_columns ).set_index("Topic")
+		# format the table
+		return tabulate(long_df, headers='keys', tablefmt='psql')
+
+	def get_df( self ):
+		return self.df
+
+	def to_csv( self, out_path, sep="\t" ):
+		self.df.to_csv( out_path, sep )
+
+# --------------------------------------------------------------
 # Utilities
 # --------------------------------------------------------------
 
@@ -139,59 +197,7 @@ def truncate_term_rankings( orig_rankings, top, vocab = None ):
 					break
 			total += counter
 			trunc_rankings.append( temp )
-		print('Skipped %d terms' % total)
+		#print('Skipped %d terms' % total)
 	return trunc_rankings
 
-def format_term_rankings( term_rankings, labels = None, top = 10 ):
-	"""
-	Format a list of multiple term rankings using PrettyTable.
-	"""
-	from prettytable import PrettyTable
-	# add header
-	header = ["Rank"]
-	if labels is None:
-		for i in range( len(term_rankings) ):
-			header.append("C%02d" % (i+1) )	
-	else:
-		for label in labels:
-			header.append(label)	
-	tab = PrettyTable(header)
-	for field in header:
-		tab.align[field] = "l"
-	# add body
-	for pos in range(top):
-		row = [ str(pos+1) ]
-		for ranking in term_rankings:
-			# have we run out of terms?
-			if len(ranking) <= pos:
-				row.append( "" ) 
-			else:
-				row.append( ranking[pos] ) 
-		tab.add_row( row )
-	return tab
-
-def format_term_rankings_long( term_rankings, labels = None, top = 10 ):
-	"""
-	Format a list of multiple term rankings using lists.
-	"""
-	if labels is None:
-		labels = []
-		for i in range( len(term_rankings) ):
-			labels.append("C%02d" % (i+1) )	
-	max_label_len = 0
-	for label in labels:
-		max_label_len = max(max_label_len,len(label))
-	max_label_len += 1
-
-	s = ""
-	for i, label in enumerate(labels):
-		s += label.ljust(max_label_len)
-		s += ": "
-		sterms = ""
-		for term in term_rankings[i][0:top]:
-			if len(sterms) > 0:
-				sterms += ", "
-			sterms += term
-		s += sterms + "\n"
-	return s
 

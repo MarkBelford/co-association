@@ -1,9 +1,22 @@
+import random
+import logging as log
 import numpy as np
 from scipy import sparse as sp
-# note that we use the scikit-learn bundled version of joblib
-from sklearn.externals import joblib
+import joblib
 
 # --------------------------------------------------------------
+
+def init_random_seeds( random_seed ):
+	"""
+	Initialize all required random seeds.
+	"""
+	if random_seed < 0:
+		random_seed = random.randint(1,100000)
+	np.random.seed( random_seed )
+	random.seed( random_seed )			
+	log.info("Using random seed %s" % random_seed )
+	return random_seed
+
 
 def build_centroids( X, partition, k ):
 	"""
@@ -58,18 +71,18 @@ def load_term_rankings( in_path ):
 	(term_rankings,labels) = joblib.load( in_path )
 	return (term_rankings,labels)
 
-def save_nmf_factors( out_path, W, H, doc_ids ):
-	"""
-	Save a NMF factorization result using Joblib.
-	"""
-	joblib.dump((W,H,doc_ids), out_path ) 
+def save_nmf_factors( out_path, W, H, doc_ids, terms ):
+    """
+    Save a NMF factorization result using Joblib.
+    """
+    joblib.dump((W,H,doc_ids,terms), out_path ) 
 
 def load_nmf_factors( in_path ):
 	"""
 	Load a NMF factorization result using Joblib.
 	"""
-	(W,H,doc_ids) = joblib.load( in_path )
-	return (W,H,doc_ids)
+	(W,H,doc_ids,terms) = joblib.load( in_path )
+	return (W,H,doc_ids,terms)
 
 def save_partition( out_path, partition, doc_ids ):
 	"""
@@ -78,7 +91,7 @@ def save_partition( out_path, partition, doc_ids ):
 	joblib.dump((partition,doc_ids), out_path ) 
 
 
-def load_partition( in_path):
+def load_partition( in_path ):
 	"""
 	Load a disjoint partition (clustering) result using Joblib.
 	"""

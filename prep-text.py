@@ -1,50 +1,73 @@
 #!/usr/bin/env python
 """
-Tool to pre-process documents in the specified directories, and export a single pre-processed datasets, ready for topic modeling. 
+Tool to parse a collection of documents, where each file is stored in a separate plain text file.
 
-python prep-text.py --tfidf --norm -o data/sample data/sample/ 
+Sample usage:
+
+python prep-text.py -o dataset --df 20 --tfidf --norm path/to/datsest 
+
 """
-import os, os.path, sys
+import os, os.path, sys, re
 import logging as log
 from optparse import OptionParser
-import text.util
+import textutil
 
 # --------------------------------------------------------------
 
 def main():
-	parser = OptionParser(usage="usage: %prog [options] directory1 directory2 ...")
-	parser.add_option("--df", action="store", type="int", dest="min_df", help="minimum number of documents for a term to appear", default=10)
+	parser = OptionParser(usage="usage: %prog [options] dir1 dir2 ...")
+	parser.add_option("-o", action="store", type="string", dest="prefix", help="output prefix for corpus files", default=None)
+	parser.add_option("--df", action="store", type="int", dest="min_df", help="minimum number of documents for a term to appear", default=20)
 	parser.add_option("--tfidf", action="store_true", dest="apply_tfidf", help="apply TF-IDF term weight to the document-term matrix")
 	parser.add_option("--norm", action="store_true", dest="apply_norm", help="apply unit length normalization to the document-term matrix")
-	parser.add_option("--minlen", action="store", type="int", dest="min_doc_length", help="minimum document length (in characters)", default=10)
-	parser.add_option("-s", action="store", type="string", dest="stoplist_file", help="generic stopword file path", default="text/stopwords.txt")
-	parser.add_option("-o", action="store", type="string", dest="prefix", help="output prefix for corpus files", default="corpus")
-	# Parse command line arguments
+	parser.add_option("--minlen", action="store", type="int", dest="min_doc_length", help="minimum document length (in characters)", default=50)
+	parser.add_option("-s", action="store", type="string", dest="stoplist_file", help="custom stopword file path", default=None)
 	(options, args) = parser.parse_args()
 	if( len(args) < 1 ):
 		parser.error( "Must specify at least one directory" )	
-	log.basicConfig(level=20, format='%(message)s')
+	log.basicConfig(level=log.INFO, format='%(message)s')
+	
+	# Find all relevant files in directories specified by user
+	filepaths = []
+	args.sort()
+	for in_path in args:
+		if os.path.isdir( in_path ):
+			log.info( "Searching %s for documents ..." % in_path )
+			for fpath in textutil.find_documents( in_path ):
+				filepaths.append( fpath )
+		else:
+			if in_path.startswith(".") or in_path.startswith("_"):
+				continue
+			filepaths.append( in_path )
+	log.info( "Found %d documents to parse" % len(filepaths) )
 
-	# Load required stopwords
-	log.info( "Using stopwords from %s" % options.stoplist_file ) 
-	stopwords = text.util.load_word_set( options.stoplist_file )
-	log.info( "%d stopwords loaded" % len(stopwords) )
-
-	# Read content of all documents in the specified directories
-	docgen = text.util.DocumentBodyGenerator( args, options.min_doc_length )
+	# Read the documents
+	log.info( "Reading documents ..." )
 	docs = []
+	short_documents = 0
 	doc_ids = []
-	classes, label_count = {}, {}
-	for doc_id, filepath, body in docgen:
+	label_count = {}
+	classes = {}
+	for filepath in filepaths:
+		# create the document ID
 		label = os.path.basename( os.path.dirname( filepath ).replace(" ", "_") )
+		doc_id = os.path.splitext( os.path.basename( filepath ) )[0]
+		if not doc_id.startswith(label):
+			doc_id = "%s_%s" % ( label, doc_id )
+		# read body text
+		log.debug( "Reading text from %s ..." % filepath )
+		body = textutil.read_text( filepath )
+		if len(body) < options.min_doc_length:
+			short_documents += 1
+			continue
+		docs.append(body)	
+		doc_ids.append(doc_id)	
 		if label not in classes:
 			classes[label] = set()
 			label_count[label] = 0
 		classes[label].add(doc_id)
 		label_count[label] += 1
-		docs.append(body)	
-		doc_ids.append(doc_id)	
-	log.info( "Found %d documents to parse" % len(docs) )
+	log.info( "Kept %d documents. Skipped %d documents with length < %d" % ( len(docs), short_documents, options.min_doc_length ) )
 	if len(classes) < 2:
 		log.warning( "No ground truth available" )
 		classes = None
@@ -52,15 +75,21 @@ def main():
 		log.info( "Ground truth: %d classes - %s" % ( len(classes), label_count ) )
 
 	# Convert the documents in TF-IDF vectors and filter stopwords
+	stopwords = set()
+	if not options.stoplist_file is None:
+		log.info( "Using custom stopwords from %s" % options.stoplist_file )
+		stopwords = textutil.load_word_list(options.stoplist_file)
 	log.info( "Pre-processing data (%d stopwords, tfidf=%s, normalize=%s, min_df=%d) ..." % (len(stopwords), options.apply_tfidf, options.apply_norm, options.min_df) )
-	(X,terms) = text.util.preprocess( docs, stopwords, min_df = options.min_df, apply_tfidf = options.apply_tfidf, apply_norm = options.apply_norm )
+	(X,terms) = textutil.preprocess( docs, stopwords, min_df = options.min_df, apply_tfidf = options.apply_tfidf, apply_norm = options.apply_norm )
 	log.info( "Built document-term matrix: %d documents, %d terms" % (X.shape[0], X.shape[1]) )
 	
 	# Store the corpus
 	prefix = options.prefix
-	log.info( "Saving data to %s.pkl" % prefix )
-	text.util.save_corpus( prefix, X, terms, doc_ids, classes )
-
+	if prefix is None:
+		prefix = "corpus"
+	log.info( "Saving corpus '%s'" % prefix )
+	textutil.save_corpus( prefix, X, terms, doc_ids, classes )
+  
 # --------------------------------------------------------------
 
 if __name__ == "__main__":

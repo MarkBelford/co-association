@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 """
-Tool for evaluating the coherence of topic models, using measures based on word embeddings.
+Tool for evaluating the coherence of topic models stred in one or more PKL files, using measure based on word embeddings.
 
 Sample usage:
-python evaluate-embedding.py -t 10 -m data/model-w2v.bin -o results-embedding-k03.csv results/nmf_k03/ranks*.pkl
+python evaluate-embedding.py -b -t 10 -m /Users/Mark/Desktop/embeddings-w2v/cnndailymail-w2v-cbow-d100.bin -o results/bbc-coherence.csv data/bbc/nmf_k05/*rank*
+
 """
 import os, os.path, sys
 import logging as log
 from optparse import OptionParser
 import gensim
-import gensim.downloader as api
 import unsupervised.rankings, unsupervised.util
 import validation.embedding, validation.util
 
@@ -53,13 +53,13 @@ def main():
 		scores.evaluate( in_path, truncated_rankings )
 
 	# Display a summary of the results
-	tab = scores.create_table( include_mean = True, precision = 3 )
+	tab = scores.create_table( include_stats = True, precision = 3 )
 	log.info(tab)
 
 	# Write results to CSV?
 	if not options.out_path is None:
 		log.info("Writing results to %s" % options.out_path)
-		scores.write_table( options.out_path, include_mean = True, precision = 4 )
+		scores.write_table( options.out_path, include_stats = True, precision = 4 )
 
 # --------------------------------------------------------------
 

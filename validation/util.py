@@ -27,15 +27,16 @@ class ScoreCollection:
 		for experiment_key in self.all_scores:
 			for score_key in self.all_scores[experiment_key]:
 				vectors[score_key].append( self.all_scores[experiment_key][score_key] )
-		mean_scores = {}
-		std_scores = {}
+		mean_scores, std_scores, min_scores, max_scores = {}, {}, {}, {}
 		for score_key in self.all_score_keys:
 			v = np.array( vectors[score_key] )
 			mean_scores[score_key] = np.mean(v)
 			std_scores[score_key] = np.std(v)
-		return (mean_scores,std_scores)
+			min_scores[score_key] = v.min()
+			max_scores[score_key] = v.max()
+		return (mean_scores, std_scores, min_scores, max_scores)
 
-	def create_table( self, include_mean = False, precision = 2 ):
+	def create_table( self, include_stats = False, precision = 2 ):
 		fmt = "%%.%df" % precision
 		header = ["experiment"]
 		score_keys = list(self.all_score_keys)
@@ -50,16 +51,28 @@ class ScoreCollection:
 			for score_key in score_keys:
 				row.append( fmt % self.all_scores[experiment_key].get( score_key, 0.0 ) )
 			tab.add_row( row )
-		if include_mean:
-			mean_scores, std_scores = self.aggregate_scores()
+		if include_stats:
+			mean_scores, std_scores, min_scores, max_scores = self.aggregate_scores()
 			row = [ "MEAN" ]
 			for score_key in score_keys:
 				row.append( fmt % mean_scores.get( score_key, 0.0 ) )
 			tab.add_row( row )
+			row = [ "SDEV" ]
+			for score_key in score_keys:
+				row.append( fmt % std_scores.get( score_key, 0.0 ) )
+			tab.add_row( row )
+			row = [ "MIN" ]
+			for score_key in score_keys:
+				row.append( fmt % min_scores.get( score_key, 0.0 ) )
+			tab.add_row( row )
+			row = [ "MAX" ]
+			for score_key in score_keys:
+				row.append( fmt % max_scores.get( score_key, 0.0 ) )
+			tab.add_row( row )
 		return tab 
 
-	def write_table( self, out_path, delimiter=",", include_mean = False, precision = 2 ):
-		tab = self.create_table( include_mean, precision )
+	def write_table( self, out_path, delimiter=",", include_stats = False, precision = 2 ):
+		tab = self.create_table( include_stats, precision )
 		fout = open(out_path, 'w')
 		w = csv.writer( fout, delimiter=delimiter, quoting=csv.QUOTE_MINIMAL)
 		w.writerow(tab.field_names)

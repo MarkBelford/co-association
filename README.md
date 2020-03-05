@@ -26,7 +26,7 @@ To check the results:
  
  Embeddings are available to download [here](http://erdos.ucd.ie/co-association/)
  
- 	python evaluate-embedding.py -b -t 10 -m /Users/Mark/Desktop/embeddings-w2v/cnndailymail-w2v-cbow-d100.bin -o results/bbc-coherence.csv data/bbc/nmf_k05/*rank*
+ 	python evaluate-embedding.py -b -t 10 -m wikipedia2016-w2v-cbow-d100.bin -o results/bbc-coherence.csv data/bbc/nmf_k05/*rank*
 
  #### Step 5: Evaluation with NMI
  
